@@ -47,12 +47,18 @@ def promo_cmd(message):
 def get_nick(message, code):
     nick = message.text.strip()
     reward = PROMOCODES[code]
-    requests.post('https://api.web3forms.com/submit', data={
-        'access_key': WEB3FORMS_KEY,
-        'subject': f'Промокод: {code}',
-        'Ник': nick, 'Код': code, 'Награда': reward
-    })
-    bot.reply_to(message, f'✅ Готово!\n👤 {nick}\n🎁 {reward}')
+    try:
+        response = requests.post('https://api.web3forms.com/submit', data={
+            'access_key': WEB3FORMS_KEY,
+            'subject': f'Промокод: {code}',
+            'Ник': nick,
+            'Код': code,
+            'Награда': reward
+        }, timeout=10)
+        print('Письмо отправлено:', response.status_code)
+    except Exception as e:
+        print('Ошибка:', e)
+    bot.reply_to(message, f'✅ Готово!\n👤 {nick}\n🎁 {reward}\n📧 Ожидай награду на сервере!')
 
 def run_bot():
     print('Бот запущен!')
