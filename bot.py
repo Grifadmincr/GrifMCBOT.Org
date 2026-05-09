@@ -19,6 +19,19 @@ PROMOCODES = {
 waiting = {}
 help_requests = {}
 
+# === АВТООТВЕТЫ ===
+AUTO_REPLIES = {
+    'айпи': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
+    'айпи сервера': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
+    'ip': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
+    'ип': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
+    'сервер': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
+    'вайп': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
+    'обнуление': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
+    'ваип': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
+    'вайпик': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
+}
+
 @app.route('/')
 def home():
     return "Бот работает!"
@@ -91,14 +104,24 @@ def news_cmd(message):
 @bot.message_handler(func=lambda m: True)
 def all_messages(message):
     chat_id = message.chat.id
+    
+    # Ожидание ника для промокода
     if chat_id in waiting:
         nick = message.text.strip()
         code = waiting.pop(chat_id)
         reward = PROMOCODES[code]
         bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Нет награды 2 часа — @Manager_GrifMcRu")
         bot.send_message(ADMIN_ID, f"🎁 Промокод {code}\n👤 {nick}\n🎁 {reward}")
-    else:
-        bot.send_message(chat_id, "Команды: /start /news /list /promo /help")
+        return
+    
+    # Автоответы
+    msg_lower = message.text.lower().strip()
+    if msg_lower in AUTO_REPLIES:
+        bot.send_message(chat_id, AUTO_REPLIES[msg_lower])
+        return
+    
+    # Стандартный ответ
+    bot.send_message(chat_id, "Команды: /start /news /list /promo /help\n\n💡 Также ты можешь просто написать:\n• айпи — IP сервера\n• вайп — дата вайпа")
 
 def run_bot():
     print("Бот запущен!")
