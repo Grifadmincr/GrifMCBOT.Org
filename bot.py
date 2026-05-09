@@ -1,12 +1,10 @@
 import telebot
 from threading import Thread
 from flask import Flask
-import requests
 
 TOKEN = '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE'
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
-WEB3FORMS_KEY = '42864224-6df0-4e25-8068-7b486cf314dd'
 
 PROMOCODES = {
     'START2026': '50.000 монет',
@@ -16,48 +14,46 @@ PROMOCODES = {
     'GRIFGOLD': 'Золотая броня'
 }
 
+waiting = {}
+
 @app.route('/')
 def home():
     return "Бот работает!"
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, '🎮 GrifMC Pro Бот!\n/promo КОД - активировать промокод\n/list - список')
+    bot.send_message(message.chat.id, '🎮 GrifMC Pro Бот!\n/promo КОД\n/list')
 
 @bot.message_handler(commands=['list'])
 def list_cmd(message):
     text = '🎟️ Промокоды:\n'
     for code, reward in PROMOCODES.items():
         text += f'{code} — {reward}\n'
-    bot.reply_to(message, text)
+    bot.send_message(message.chat.id, text)
 
 @bot.message_handler(commands=['promo'])
 def promo_cmd(message):
     args = message.text.split()
     if len(args) < 2:
-        bot.reply_to(message, '❌ /promo КОД')
+        bot.send_message(message.chat.id, '❌ /promo КОД')
         return
     code = args[1].upper()
     if code not in PROMOCODES:
-        bot.reply_to(message, '❌ Неверный код!')
+        bot.send_message(message.chat.id, '❌ Неверный код!')
         return
-    msg = bot.reply_to(message, f'✅ {code} — {PROMOCODES[code]}\n👤 Введи ник:')
-    bot.register_next_step_handler(msg, get_nick, code)
+    waiting[message.chat.id] = code
+    bot.send_message(message.chat.id, f'✅ {code} — {PROMOCODES[code]}\n👤 Введи ник:')
 
-def get_nick(message, code):
-    nick = message.text.strip()
-    reward = PROMOCODES[code]
-    try:
-        requests.post('https://api.web3forms.com/submit', data={
-            'access_key': WEB3FORMS_KEY,
-            'subject': f'Промокод: {code}',
-            'Ник': nick,
-            'Код': code,
-            'Награда': reward
-        }, timeout=10)
-    except:
-        pass
-    bot.reply_to(message, f'✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Если награда не поступила в течение 2 часов — пиши менеджеру:\n@Manager_GrifMcRu')
+@bot.message_handler(func=lambda m: True)
+def all_messages(message):
+    chat_id = message.chat.id
+    if chat_id in waiting:
+        nick = message.text.strip()
+        code = waiting.pop(chat_id)
+        reward = PROMOCODES[code]
+        bot.send_message(chat_id, f'✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Если награды нет 2 часа — @Manager_GrifMcRu')
+    else:
+        bot.send_message(chat_id, 'Используй: /start /list /promo КОД')
 
 def run_bot():
     print('Бот запущен!')
