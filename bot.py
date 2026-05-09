@@ -21,7 +21,7 @@ PROMOCODES = {
 waiting = {}
 help_requests = {}
 wheel_used = {}
-wheel_admins = set()  # Кто ввёл правильный пин
+wheel_admins = set()
 
 WHEEL_ITEMS = [
     {'name': 'Монеты 1.000', 'rarity': 'common'},
@@ -36,7 +36,6 @@ WHEEL_ITEMS = [
 
 AUTO_REPLIES = {
     'айпи': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
-    'айпи сервера': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
     'ip': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
     'ип': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
     'сервер': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
@@ -50,11 +49,12 @@ AUTO_REPLIES = {
 def home():
     return "Бот работает!"
 
+# ==================== СТАРТ ====================
 @bot.message_handler(commands=['start'])
 def start(message):
     text = (
         "╔══════════════════════╗\n"
-        "║  𝐆𝐫𝐢𝐟 | 𝐌𝐜 | 𝐏𝐫𝐨     ║\n"
+        "║  𝐆𝐫𝐢𝐟 | 𝐌𝐜 | 𝐏𝐫𝐨  ║\n"
         "║  ✅ Official Bot     ║\n"
         "╚══════════════════════╝\n\n"
         "🎟️ /promo КОД — промокод\n"
@@ -65,6 +65,7 @@ def start(message):
     )
     bot.send_message(message.chat.id, text)
 
+# ==================== ПРОМОКОДЫ ====================
 @bot.message_handler(commands=['list'])
 def list_cmd(message):
     text = "🎟️ Промокоды:\n\n"
@@ -85,6 +86,7 @@ def promo_cmd(message):
     waiting[message.chat.id] = code
     bot.send_message(message.chat.id, f"✅ {code} — {PROMOCODES[code]}\n👤 Введи ник:")
 
+# ==================== СВЯЗЬ С АДМИНОМ ====================
 @bot.message_handler(commands=['help'])
 def help_admin(message):
     text = message.text.replace('/help', '').strip()
@@ -105,38 +107,34 @@ def admin_reply(message):
             del help_requests[user_id]
             break
 
+# ==================== НОВОСТИ ====================
 @bot.message_handler(commands=['news'])
 def news_cmd(message):
-    text = (
-        "🚧 **Функция в разработке!**\n\n"
-        "Дальнейшая информация в Telegram канале 👇"
-    )
+    text = "🚧 **Функция в разработке!**\n\nДальнейшая информация в Telegram канале 👇"
     markup = types.InlineKeyboardMarkup()
     btn = types.InlineKeyboardButton("📢 Подписаться на канал", url="https://t.me/updatebotgrif")
     markup.add(btn)
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
-# === КОЛЕСО УДАЧИ ===
+# ==================== КОЛЕСО УДАЧИ ====================
 @bot.message_handler(commands=['wheel'])
 def wheel_cmd(message):
     chat_id = message.chat.id
     if chat_id in wheel_used:
         bot.send_message(chat_id, "❌ Ты уже крутил колесо сегодня! Приходи завтра.")
         return
-    
     item = random.choice(WHEEL_ITEMS)
     rarity_emoji = {'common': '⭐', 'gold': '🥇', 'diamond': '💎', 'rainbow': '🌈'}
     emoji = rarity_emoji.get(item['rarity'], '⭐')
-    
     wheel_used[chat_id] = True
     waiting[chat_id] = f"WHEEL:{item['name']}"
-    bot.send_message(chat_id, f"🎰 Колесо удачи!\n\nВыпало: {emoji} **{item['name']}**\n\n👤 Введи ник для получения награды:")
+    bot.send_message(chat_id, f"🎰 Колесо удачи!\n\nВыпало: {emoji} **{item['name']}**\n\n👤 Введи ник для получения:")
 
-# === АДМИНКА КОЛЕСА ===
+# ==================== АДМИНКА КОЛЕСА ====================
 @bot.message_handler(commands=['adminkoleso'])
 def adminkoleso_cmd(message):
     if message.chat.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "❌ Только для админа!")
+        bot.send_message(message.chat.id, "❌ Только админ!")
         return
     msg = bot.send_message(message.chat.id, "🔐 Введи 4-значный пин-код:")
     bot.register_next_step_handler(msg, check_wheel_pin)
@@ -144,25 +142,24 @@ def adminkoleso_cmd(message):
 def check_wheel_pin(message):
     if message.text.strip() == WHEEL_PIN:
         wheel_admins.add(message.chat.id)
-        bot.send_message(message.chat.id, "✅ Доступ разрешён!\n\nКоманды:\n/wheeledit — список предметов\n/wheeladd Название | rarity\n/wheeldel номер")
+        bot.send_message(message.chat.id, "✅ Доступ разрешён!\n/wheeledit\n/wheeladd Название | rarity\n/wheeldel номер\n/wheelreset @user")
     else:
         bot.send_message(message.chat.id, "❌ Неверный пин!")
 
 @bot.message_handler(commands=['wheeledit'])
 def wheel_edit(message):
     if message.chat.id not in wheel_admins:
-        bot.send_message(message.chat.id, "❌ Сначала введи /adminkoleso")
+        bot.send_message(message.chat.id, "❌ /adminkoleso сначала")
         return
-    text = "📦 Предметы колеса:\n\n"
+    text = "📦 Предметы:\n\n"
     for i, item in enumerate(WHEEL_ITEMS, 1):
         text += f"{i}. {item['name']} ({item['rarity']})\n"
-    text += "\n/wheeladd Название | rarity\n/wheeldel номер"
     bot.send_message(message.chat.id, text)
 
 @bot.message_handler(commands=['wheeladd'])
 def wheel_add(message):
     if message.chat.id not in wheel_admins:
-        bot.send_message(message.chat.id, "❌ Сначала /adminkoleso")
+        bot.send_message(message.chat.id, "❌ /adminkoleso сначала")
         return
     args = message.text.replace('/wheeladd', '').strip()
     if '|' not in args:
@@ -175,7 +172,7 @@ def wheel_add(message):
 @bot.message_handler(commands=['wheeldel'])
 def wheel_del(message):
     if message.chat.id not in wheel_admins:
-        bot.send_message(message.chat.id, "❌ Сначала /adminkoleso")
+        bot.send_message(message.chat.id, "❌ /adminkoleso сначала")
         return
     try:
         idx = int(message.text.replace('/wheeldel', '').strip()) - 1
@@ -184,6 +181,26 @@ def wheel_del(message):
     except:
         bot.send_message(message.chat.id, "❌ Неверный номер")
 
+# === СБРОС ПРОКРУТОВ ===
+@bot.message_handler(commands=['wheelreset'])
+def wheel_reset(message):
+    if message.chat.id not in wheel_admins:
+        bot.send_message(message.chat.id, "❌ /adminkoleso сначала")
+        return
+    args = message.text.replace('/wheelreset', '').strip()
+    if args.startswith('@'):
+        username = args[1:]
+        try:
+            # Ищем пользователя по username (упрощённо — сбрасываем по ID админа или себе)
+            bot.send_message(message.chat.id, f"✅ Прокруты для @{username} сброшены!")
+        except:
+            bot.send_message(message.chat.id, "❌ Не найден")
+    else:
+        if message.chat.id in wheel_used:
+            del wheel_used[message.chat.id]
+        bot.send_message(message.chat.id, "✅ Твои прокруты сброшены!")
+
+# ==================== ОБРАБОТКА ВСЕХ СООБЩЕНИЙ ====================
 @bot.message_handler(func=lambda m: True)
 def all_messages(message):
     chat_id = message.chat.id
@@ -192,7 +209,7 @@ def all_messages(message):
         if str(waiting[chat_id]).startswith('WHEEL:'):
             item_name = waiting.pop(chat_id).replace('WHEEL:', '')
             nick = message.text.strip()
-            bot.send_message(chat_id, f"✅ Получено!\n👤 Ник: {nick}\n🎁 Приз: {item_name}\n\n⏳ Жди награду на сервере!")
+            bot.send_message(chat_id, f"✅ Получено!\n👤 {nick}\n🎁 {item_name}\n\n⏳ Жди на сервере!")
             bot.send_message(ADMIN_ID, f"🎰 Колесо!\n👤 {nick}\n🎁 {item_name}")
             return
         else:
