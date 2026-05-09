@@ -35,21 +35,16 @@ WHEEL_ITEMS = [
 ]
 
 AUTO_REPLIES = {
-    'айпи': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
-    'ip': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
-    'ип': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
-    'сервер': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
-    'вайп': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
-    'обнуление': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
-    'ваип': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
-    'вайпик': '⏳ Следующий вайп: **середина лета, 30 числа в 20:00**\nГотовься! 🔥',
+    'айпи': '🌐 IP: grifmcru.aternos.me:11782\n📦 1.20.1',
+    'ip': '🌐 IP: grifmcru.aternos.me:11782\n📦 1.20.1',
+    'сервер': '🌐 IP: grifmcru.aternos.me:11782\n📦 1.20.1',
+    'вайп': '⏳ Середина лета, 30 числа в 20:00 🔥',
 }
 
 @app.route('/')
 def home():
     return "Бот работает!"
 
-# ==================== СТАРТ ====================
 @bot.message_handler(commands=['start'])
 def start(message):
     text = (
@@ -57,15 +52,11 @@ def start(message):
         "║  𝐆𝐫𝐢𝐟 | 𝐌𝐜 | 𝐏𝐫𝐨  ║\n"
         "║  ✅ Official Bot     ║\n"
         "╚══════════════════════╝\n\n"
-        "🎟️ /promo КОД — промокод\n"
-        "🎰 /wheel — колесо удачи\n"
-        "📰 /news — новости\n"
-        "📋 /list — промокоды\n"
-        "📩 /help текст — админу"
+        "🎟️ /promo КОД\n🎰 /wheel\n📰 /news\n📋 /list\n"
+        "📩 /help текст\n🚨 /report"
     )
     bot.send_message(message.chat.id, text)
 
-# ==================== ПРОМОКОДЫ ====================
 @bot.message_handler(commands=['list'])
 def list_cmd(message):
     text = "🎟️ Промокоды:\n\n"
@@ -86,7 +77,6 @@ def promo_cmd(message):
     waiting[message.chat.id] = code
     bot.send_message(message.chat.id, f"✅ {code} — {PROMOCODES[code]}\n👤 Введи ник:")
 
-# ==================== СВЯЗЬ С АДМИНОМ ====================
 @bot.message_handler(commands=['help'])
 def help_admin(message):
     text = message.text.replace('/help', '').strip()
@@ -107,28 +97,53 @@ def admin_reply(message):
             del help_requests[user_id]
             break
 
-# ==================== НОВОСТИ ====================
 @bot.message_handler(commands=['news'])
 def news_cmd(message):
-    text = "🚧 **Функция в разработке!**\n\nДальнейшая информация в Telegram канале 👇"
     markup = types.InlineKeyboardMarkup()
     btn = types.InlineKeyboardButton("📢 Подписаться на канал", url="https://t.me/updatebotgrif")
     markup.add(btn)
-    bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
+    bot.send_message(message.chat.id, "🚧 Функция в разработке!\n👇 Канал с новостями:", reply_markup=markup)
+
+# ==================== ЖАЛОБА НА ИГРОКА ====================
+@bot.message_handler(commands=['report'])
+def report_cmd(message):
+    text = message.text.replace('/report', '').strip()
+    if not text:
+        bot.send_message(message.chat.id,
+            "❌ Используй формат:\n"
+            "/report\n"
+            "Ник нарушителя: ник\n"
+            "Мой ник: ник\n"
+            "Доказательства: ссылка\n"
+            "Дата: дд.мм.гггг"
+        )
+        return
+    
+    user = message.from_user
+    user_info = f"@{user.username}" if user.username else f"ID: {user.id}"
+    
+    report_text = (
+        f"🚨 **НОВАЯ ЖАЛОБА!**\n"
+        f"👤 От: {user_info}\n\n"
+        f"{text}"
+    )
+    bot.send_message(ADMIN_ID, report_text, parse_mode="Markdown")
+    bot.send_message(message.chat.id, "✅ Жалоба отправлена администратору! Спасибо за обращение.")
 
 # ==================== КОЛЕСО УДАЧИ ====================
 @bot.message_handler(commands=['wheel'])
 def wheel_cmd(message):
     chat_id = message.chat.id
     if chat_id in wheel_used:
-        bot.send_message(chat_id, "❌ Ты уже крутил колесо сегодня! Приходи завтра.")
+        bot.send_message(chat_id, "❌ Ты уже крутил сегодня! Возвращайся завтра.")
         return
     item = random.choice(WHEEL_ITEMS)
-    rarity_emoji = {'common': '⭐', 'gold': '🥇', 'diamond': '💎', 'rainbow': '🌈'}
+    rarity_emoji = {'common': '⭐', 'gold': '🥇', 'diamond': '💎', 'rainbow': '🌈',
+                    'legendary': '👑', 'mythic': '🔮', 'event': '🎪', 'secret': '🤫', 'admin': '🛡️'}
     emoji = rarity_emoji.get(item['rarity'], '⭐')
     wheel_used[chat_id] = True
     waiting[chat_id] = f"WHEEL:{item['name']}"
-    bot.send_message(chat_id, f"🎰 Колесо удачи!\n\nВыпало: {emoji} **{item['name']}**\n\n👤 Введи ник для получения:")
+    bot.send_message(chat_id, f"🎰 Колесо удачи!\n\nВыпало: {emoji} **{item['name']}**\n\n👤 Введи ник:")
 
 # ==================== АДМИНКА КОЛЕСА ====================
 @bot.message_handler(commands=['adminkoleso'])
@@ -136,13 +151,13 @@ def adminkoleso_cmd(message):
     if message.chat.id != ADMIN_ID:
         bot.send_message(message.chat.id, "❌ Только админ!")
         return
-    msg = bot.send_message(message.chat.id, "🔐 Введи 4-значный пин-код:")
+    msg = bot.send_message(message.chat.id, "🔐 Введи 4-значный пин:")
     bot.register_next_step_handler(msg, check_wheel_pin)
 
 def check_wheel_pin(message):
     if message.text.strip() == WHEEL_PIN:
         wheel_admins.add(message.chat.id)
-        bot.send_message(message.chat.id, "✅ Доступ разрешён!\n/wheeledit\n/wheeladd Название | rarity\n/wheeldel номер\n/wheelreset @user")
+        bot.send_message(message.chat.id, "✅ Доступ открыт!\n/wheeledit\n/wheeladd Название | rarity\n/wheeldel номер\n/wheelreset")
     else:
         bot.send_message(message.chat.id, "❌ Неверный пин!")
 
@@ -181,26 +196,16 @@ def wheel_del(message):
     except:
         bot.send_message(message.chat.id, "❌ Неверный номер")
 
-# === СБРОС ПРОКРУТОВ ===
 @bot.message_handler(commands=['wheelreset'])
 def wheel_reset(message):
     if message.chat.id not in wheel_admins:
         bot.send_message(message.chat.id, "❌ /adminkoleso сначала")
         return
-    args = message.text.replace('/wheelreset', '').strip()
-    if args.startswith('@'):
-        username = args[1:]
-        try:
-            # Ищем пользователя по username (упрощённо — сбрасываем по ID админа или себе)
-            bot.send_message(message.chat.id, f"✅ Прокруты для @{username} сброшены!")
-        except:
-            bot.send_message(message.chat.id, "❌ Не найден")
-    else:
-        if message.chat.id in wheel_used:
-            del wheel_used[message.chat.id]
-        bot.send_message(message.chat.id, "✅ Твои прокруты сброшены!")
+    if message.chat.id in wheel_used:
+        del wheel_used[message.chat.id]
+    bot.send_message(message.chat.id, "✅ Прокруты сброшены!")
 
-# ==================== ОБРАБОТКА ВСЕХ СООБЩЕНИЙ ====================
+# ==================== ОБРАБОТКА СООБЩЕНИЙ ====================
 @bot.message_handler(func=lambda m: True)
 def all_messages(message):
     chat_id = message.chat.id
@@ -209,14 +214,14 @@ def all_messages(message):
         if str(waiting[chat_id]).startswith('WHEEL:'):
             item_name = waiting.pop(chat_id).replace('WHEEL:', '')
             nick = message.text.strip()
-            bot.send_message(chat_id, f"✅ Получено!\n👤 {nick}\n🎁 {item_name}\n\n⏳ Жди на сервере!")
+            bot.send_message(chat_id, f"✅ Приз получен!\n👤 {nick}\n🎁 {item_name}\n⏳ Жди на сервере!")
             bot.send_message(ADMIN_ID, f"🎰 Колесо!\n👤 {nick}\n🎁 {item_name}")
             return
         else:
             nick = message.text.strip()
             code = waiting.pop(chat_id)
             reward = PROMOCODES[code]
-            bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Нет награды 2 часа — @Manager_GrifMcRu")
+            bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n⏳ @Manager_GrifMcRu")
             bot.send_message(ADMIN_ID, f"🎁 Промокод {code}\n👤 {nick}\n🎁 {reward}")
             return
     
@@ -225,7 +230,7 @@ def all_messages(message):
         bot.send_message(chat_id, AUTO_REPLIES[msg_lower])
         return
     
-    bot.send_message(chat_id, "Команды: /start /wheel /news /list /promo /help\n💡 Также: айпи, вайп")
+    bot.send_message(chat_id, "Команды: /start /wheel /news /list /promo /help /report")
 
 def run_bot():
     print("Бот запущен!")
