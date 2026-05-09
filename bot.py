@@ -1,9 +1,18 @@
 import telebot
 import os
+from threading import Thread
+from flask import Flask
 
 TOKEN = os.environ.get('BOT_TOKEN', '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE')
 bot = telebot.TeleBot(TOKEN)
 
+# Простой веб-сервер для Render
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "Бот работает!"
+
+# Команды бота
 @bot.message_handler(commands=['start'])
 def start(message):
     bot.reply_to(message, '🎮 Привет! Я бот сервера GrifMC Pro!\n\nКоманды:\n/help - Помощь\n/server - Информация о сервере')
@@ -20,5 +29,11 @@ def server(message):
 def echo(message):
     bot.reply_to(message, 'Используй команды: /start /help /server')
 
-print('Бот запущен!')
-bot.polling(none_stop=True)
+# Запуск бота и сервера
+def run_bot():
+    print('Бот запущен!')
+    bot.polling(none_stop=True)
+
+if __name__ == '__main__':
+    Thread(target=run_bot).start()
+    app.run(host='0.0.0.0', port=10000)
