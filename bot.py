@@ -1,35 +1,59 @@
 import telebot
-import os
 from threading import Thread
 from flask import Flask
+import requests
 
-TOKEN = os.environ.get('BOT_TOKEN', '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE')
+TOKEN = '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE'
 bot = telebot.TeleBot(TOKEN)
-
-# Простой веб-сервер для Render
 app = Flask(__name__)
+WEB3FORMS_KEY = '42864224-6df0-4e25-8068-7b486cf314dd'
+
+PROMOCODES = {
+    'START2026': '50.000 монет',
+    'VIPBONUS': 'VIP на 3 дня',
+    'FREEDOM': 'Бесплатный регион',
+    'LUCKY10': '10.000 монет',
+    'GRIFGOLD': 'Золотая броня'
+}
+
 @app.route('/')
 def home():
     return "Бот работает!"
 
-# Команды бота
 @bot.message_handler(commands=['start'])
 def start(message):
-    bot.reply_to(message, '🎮 Привет! Я бот сервера GrifMC Pro!\n\nКоманды:\n/help - Помощь\n/server - Информация о сервере')
+    bot.reply_to(message, '🎮 GrifMC Pro Бот!\n/promo КОД - активировать промокод\n/list - список')
 
-@bot.message_handler(commands=['help'])
-def help_cmd(message):
-    bot.reply_to(message, '📋 Список команд:\n/start - Запуск бота\n/help - Помощь\n/server - IP сервера')
+@bot.message_handler(commands=['list'])
+def list_cmd(message):
+    text = '🎟️ Промокоды:\n'
+    for code, reward in PROMOCODES.items():
+        text += f'{code} — {reward}\n'
+    bot.reply_to(message, text)
 
-@bot.message_handler(commands=['server'])
-def server(message):
-    bot.reply_to(message, '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1\n🟢 Статус: Онлайн')
+@bot.message_handler(commands=['promo'])
+def promo_cmd(message):
+    args = message.text.split()
+    if len(args) < 2:
+        bot.reply_to(message, '❌ /promo КОД')
+        return
+    code = args[1].upper()
+    if code not in PROMOCODES:
+        bot.reply_to(message, '❌ Неверный код!')
+        return
+    msg = bot.reply_to(message, f'✅ {code} — {PROMOCODES[code]}\n👤 Введи ник:')
+    bot.register_next_step_handler(msg, get_nick, code)
 
-@bot.message_handler(func=lambda m: True)
-def echo(message):
-    bot.reply_to(message, 'Используй команды: /start /help /server')
+def get_nick(message, code):
+    nick = message.text.strip()
+    reward = PROMOCODES[code]
+    requests.post('https://api.web3forms.com/submit', data={
+        'access_key': WEB3FORMS_KEY,
+        'subject': f'Промокод: {code}',
+        'Ник': nick, 'Код': code, 'Награда': reward
+    })
+    bot.reply_to(message, f'✅ Готово!\n👤 {nick}\n🎁 {reward}')
 
-# Запуск бота и сервера
 def run_bot():
     print('Бот запущен!')
     bot.polling(none_stop=True)
