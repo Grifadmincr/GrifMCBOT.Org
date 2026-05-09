@@ -5,7 +5,6 @@ from telebot import types
 
 TOKEN = '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE'
 ADMIN_ID = 8648741496
-NEWS_CHANNEL = '@grifmcorg'
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
@@ -78,48 +77,17 @@ def admin_reply(message):
             del help_requests[user_id]
             break
 
-# ====== НОВОСТИ С КНОПКАМИ ======
-NEWS_PER_PAGE = 3
-
-def get_pinned_posts():
-    """Получает закреплённые посты из канала"""
-    try:
-        # Получаем ID канала
-        chat = bot.get_chat(NEWS_CHANNEL)
-        # Пытаемся получить закреплённое сообщение
-        # Примечание: Bot API не даёт прямой доступ к закреплённым сообщениям,
-        # поэтому используем обходной путь через get_chat
-        return [], chat.invite_link or f"t.me/{NEWS_CHANNEL[1:]}"
-    except:
-        return [], None
-
-def format_news_page(page, total_pages, posts):
-    """Форматирует страницу новостей"""
-    text = f"📰 Новости сервера ({page}/{total_pages}):\n\n"
-    start = (page - 1) * NEWS_PER_PAGE
-    end = start + NEWS_PER_PAGE
-    for i, post in enumerate(posts[start:end], start + 1):
-        text += f"📌 Пост {i}\n"
-    return text
-
 @bot.message_handler(commands=['news'])
 def news_cmd(message):
-    # Получаем информацию о канале
-    try:
-        chat = bot.get_chat(NEWS_CHANNEL)
-        link = chat.invite_link or f"t.me/{NEWS_CHANNEL[1:]}"
-        
-        text = (
-            f"📰 **Новости сервера**\n\n"
-            f"🔗 Все новости в нашем канале:\n"
-            f"[{NEWS_CHANNEL}]({link})\n\n"
-            f"📢 Подписывайся, чтобы быть в курсе!"
-        )
-        bot.send_message(message.chat.id, text, parse_mode="Markdown", disable_web_page_preview=True)
-    except:
-        bot.send_message(message.chat.id, "❌ Не удалось загрузить новости. Проверь, что бот добавлен в канал.")
+    text = (
+        "🚧 **Функция в разработке!**\n\n"
+        "Дальнейшая информация в Telegram канале 👇"
+    )
+    markup = types.InlineKeyboardMarkup()
+    btn = types.InlineKeyboardButton("📢 Подписаться на канал", url="https://t.me/updatebotgrif")
+    markup.add(btn)
+    bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
-# ====== ОБРАБОТКА ОСТАЛЬНЫХ СООБЩЕНИЙ ======
 @bot.message_handler(func=lambda m: True)
 def all_messages(message):
     chat_id = message.chat.id
@@ -127,7 +95,7 @@ def all_messages(message):
         nick = message.text.strip()
         code = waiting.pop(chat_id)
         reward = PROMOCODES[code]
-        bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Если награды нет 2 часа — @Manager_GrifMcRu")
+        bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Нет награды 2 часа — @Manager_GrifMcRu")
         bot.send_message(ADMIN_ID, f"🎁 Промокод {code}\n👤 {nick}\n🎁 {reward}")
     else:
         bot.send_message(chat_id, "Команды: /start /news /list /promo /help")
