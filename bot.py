@@ -2,9 +2,11 @@ import telebot
 from threading import Thread
 from flask import Flask
 from telebot import types
+import random
 
 TOKEN = '8604199684:AAFO1YuWPWS3Lyi5J4vcFCfdhfDyzevoFBE'
 ADMIN_ID = 8648741496
+WHEEL_PIN = '4591'
 bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
@@ -18,8 +20,20 @@ PROMOCODES = {
 
 waiting = {}
 help_requests = {}
+wheel_used = {}
+wheel_admins = set()  # Кто ввёл правильный пин
 
-# === АВТООТВЕТЫ ===
+WHEEL_ITEMS = [
+    {'name': 'Монеты 1.000', 'rarity': 'common'},
+    {'name': 'Монеты 5.000', 'rarity': 'common'},
+    {'name': 'VIP на 1 день', 'rarity': 'gold'},
+    {'name': 'Регион бесплатно', 'rarity': 'gold'},
+    {'name': 'Алмазная броня', 'rarity': 'diamond'},
+    {'name': 'Монеты 50.000', 'rarity': 'diamond'},
+    {'name': 'Донат Premium', 'rarity': 'rainbow'},
+    {'name': 'Тотем бессмертия', 'rarity': 'rainbow'},
+]
+
 AUTO_REPLIES = {
     'айпи': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
     'айпи сервера': '🌐 IP сервера: grifmcru.aternos.me:11782\n📦 Версия: 1.20.1',
@@ -40,12 +54,13 @@ def home():
 def start(message):
     text = (
         "╔══════════════════════╗\n"
-        "║  𝐆𝐫𝐢𝐟 | 𝐌𝐜 | 𝐏𝐫𝐨  ║\n"
+        "║  𝐆𝐫𝐢𝐟 | 𝐌𝐜 | 𝐏𝐫𝐨     ║\n"
         "║  ✅ Official Bot     ║\n"
         "╚══════════════════════╝\n\n"
         "🎟️ /promo КОД — промокод\n"
+        "🎰 /wheel — колесо удачи\n"
         "📰 /news — новости\n"
-        "📋 /list — все промокоды\n"
+        "📋 /list — промокоды\n"
         "📩 /help текст — админу"
     )
     bot.send_message(message.chat.id, text)
@@ -101,27 +116,99 @@ def news_cmd(message):
     markup.add(btn)
     bot.send_message(message.chat.id, text, parse_mode="Markdown", reply_markup=markup)
 
+# === КОЛЕСО УДАЧИ ===
+@bot.message_handler(commands=['wheel'])
+def wheel_cmd(message):
+    chat_id = message.chat.id
+    if chat_id in wheel_used:
+        bot.send_message(chat_id, "❌ Ты уже крутил колесо сегодня! Приходи завтра.")
+        return
+    
+    item = random.choice(WHEEL_ITEMS)
+    rarity_emoji = {'common': '⭐', 'gold': '🥇', 'diamond': '💎', 'rainbow': '🌈'}
+    emoji = rarity_emoji.get(item['rarity'], '⭐')
+    
+    wheel_used[chat_id] = True
+    waiting[chat_id] = f"WHEEL:{item['name']}"
+    bot.send_message(chat_id, f"🎰 Колесо удачи!\n\nВыпало: {emoji} **{item['name']}**\n\n👤 Введи ник для получения награды:")
+
+# === АДМИНКА КОЛЕСА ===
+@bot.message_handler(commands=['adminkoleso'])
+def adminkoleso_cmd(message):
+    if message.chat.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ Только для админа!")
+        return
+    msg = bot.send_message(message.chat.id, "🔐 Введи 4-значный пин-код:")
+    bot.register_next_step_handler(msg, check_wheel_pin)
+
+def check_wheel_pin(message):
+    if message.text.strip() == WHEEL_PIN:
+        wheel_admins.add(message.chat.id)
+        bot.send_message(message.chat.id, "✅ Доступ разрешён!\n\nКоманды:\n/wheeledit — список предметов\n/wheeladd Название | rarity\n/wheeldel номер")
+    else:
+        bot.send_message(message.chat.id, "❌ Неверный пин!")
+
+@bot.message_handler(commands=['wheeledit'])
+def wheel_edit(message):
+    if message.chat.id not in wheel_admins:
+        bot.send_message(message.chat.id, "❌ Сначала введи /adminkoleso")
+        return
+    text = "📦 Предметы колеса:\n\n"
+    for i, item in enumerate(WHEEL_ITEMS, 1):
+        text += f"{i}. {item['name']} ({item['rarity']})\n"
+    text += "\n/wheeladd Название | rarity\n/wheeldel номер"
+    bot.send_message(message.chat.id, text)
+
+@bot.message_handler(commands=['wheeladd'])
+def wheel_add(message):
+    if message.chat.id not in wheel_admins:
+        bot.send_message(message.chat.id, "❌ Сначала /adminkoleso")
+        return
+    args = message.text.replace('/wheeladd', '').strip()
+    if '|' not in args:
+        bot.send_message(message.chat.id, "❌ /wheeladd Название | rarity")
+        return
+    name, rarity = args.split('|')
+    WHEEL_ITEMS.append({'name': name.strip(), 'rarity': rarity.strip()})
+    bot.send_message(message.chat.id, f"✅ Добавлено: {name.strip()}")
+
+@bot.message_handler(commands=['wheeldel'])
+def wheel_del(message):
+    if message.chat.id not in wheel_admins:
+        bot.send_message(message.chat.id, "❌ Сначала /adminkoleso")
+        return
+    try:
+        idx = int(message.text.replace('/wheeldel', '').strip()) - 1
+        removed = WHEEL_ITEMS.pop(idx)
+        bot.send_message(message.chat.id, f"✅ Удалено: {removed['name']}")
+    except:
+        bot.send_message(message.chat.id, "❌ Неверный номер")
+
 @bot.message_handler(func=lambda m: True)
 def all_messages(message):
     chat_id = message.chat.id
     
-    # Ожидание ника для промокода
     if chat_id in waiting:
-        nick = message.text.strip()
-        code = waiting.pop(chat_id)
-        reward = PROMOCODES[code]
-        bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Нет награды 2 часа — @Manager_GrifMcRu")
-        bot.send_message(ADMIN_ID, f"🎁 Промокод {code}\n👤 {nick}\n🎁 {reward}")
-        return
+        if str(waiting[chat_id]).startswith('WHEEL:'):
+            item_name = waiting.pop(chat_id).replace('WHEEL:', '')
+            nick = message.text.strip()
+            bot.send_message(chat_id, f"✅ Получено!\n👤 Ник: {nick}\n🎁 Приз: {item_name}\n\n⏳ Жди награду на сервере!")
+            bot.send_message(ADMIN_ID, f"🎰 Колесо!\n👤 {nick}\n🎁 {item_name}")
+            return
+        else:
+            nick = message.text.strip()
+            code = waiting.pop(chat_id)
+            reward = PROMOCODES[code]
+            bot.send_message(chat_id, f"✅ Готово!\n👤 {nick}\n🎁 {reward}\n\n⏳ Нет награды 2 часа — @Manager_GrifMcRu")
+            bot.send_message(ADMIN_ID, f"🎁 Промокод {code}\n👤 {nick}\n🎁 {reward}")
+            return
     
-    # Автоответы
     msg_lower = message.text.lower().strip()
     if msg_lower in AUTO_REPLIES:
         bot.send_message(chat_id, AUTO_REPLIES[msg_lower])
         return
     
-    # Стандартный ответ
-    bot.send_message(chat_id, "Команды: /start /news /list /promo /help\n\n💡 Также ты можешь просто написать:\n• айпи — IP сервера\n• вайп — дата вайпа")
+    bot.send_message(chat_id, "Команды: /start /wheel /news /list /promo /help\n💡 Также: айпи, вайп")
 
 def run_bot():
     print("Бот запущен!")
